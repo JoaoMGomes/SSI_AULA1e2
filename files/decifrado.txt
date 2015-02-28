@@ -1,0 +1,3 @@
+Hello World of Encryption using RC4.
+Trata-se de um teste.
+A reprodução e venda deste ficheiro para fins comerciais não está autorizada.
