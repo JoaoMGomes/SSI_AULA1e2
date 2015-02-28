@@ -1,0 +1,37 @@
+----  RC4
+
+funciona perfeitamente byte a byte
+nao necessita de IV
+
+----  AES
+necessita de IV
+
+
+AES/CBC/NoPadding
+cifra de 16 bytes de tamanho de bloco
+precisa que estejam escritos 16 bytes no cliente e servidor le entao 16 bytes.
+
+
+
+AES/CBC/PKCS5Padding
+cifra de 16 bytes de tamanho de bloco
+servidor le primeiros 16 bytes mas precisa o cliente escreva 32 bytes primeiro.
+De seguida apos escritos 16bytes pelo cliente, servidor le 16 bytes
+
+
+-AES/CFB8/PKCS5Padding
+
+cifra de 16bytes de tamanho de bloco
+precisa que estejam pelo menos 16 bytes
+servidor vai lendo mensagens ja escritas(contudo nao le os 16bytes)
+
+AES/CFB8/NoPadding
+
+cifra de 16bytes de tamanho de bloco
+servidor le bytes logo apos o cliente escrever
+
+AES/CFB/NoPadding
+
+cifra de 16 bytes de tamanho de bloco
+servidor apenas le 16bytes de cada vez.
+le entao os primeiros 16 bytes que estiverem ainda para ser lidos.
