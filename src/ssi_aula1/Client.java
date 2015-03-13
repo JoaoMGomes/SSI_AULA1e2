@@ -6,21 +6,32 @@
 package ssi_aula1;
 
 import java.io.*;
+import java.math.BigInteger;
 import java.net.*;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
+import java.security.Key;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.util.Arrays;
+import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.CipherOutputStream;
 import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.KeyAgreement;
 import javax.crypto.KeyGenerator;
+import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
+import javax.crypto.spec.DHParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -33,11 +44,19 @@ public class Client {
     
     public static void main(String [] args){
         
-        int port = 12345;
+       
+        
+        BigInteger p = new BigInteger("99494096650139337106186933977618513974146274831566768179581759037259788798151499814653951492724365471316253651463342255785311748602922458795201382445323499931625451272600173180136123245441204133515800495917242011863558721723303661523372572477211620144038809673692512025566673746993593384600667047373692203583");
+        BigInteger g = new BigInteger("44157404837960328768872680677686802650999163226766694797650810379076416463147265401084491113667624054557335394761604876882446924929840681990106974314935015501571333024773172440352475358750668213444607353872754650805031912866692119819377041901642732455911509867728218394542745330014071040326856846990119719675");
+        DHParameterSpec dhspec = new DHParameterSpec(p, g, 1024);
+        
+        
         
         try
         {
-          Socket client = new Socket("localhost", 12345);
+          
+            
+          Socket client = new Socket("localhost", 12348);
           OutputStream outToServer = client.getOutputStream();
           
           //BufferedReader inFromUser = new BufferedReader(new InputStreamReader(System.in));
@@ -45,6 +64,81 @@ public class Client {
           PrintWriter out = new PrintWriter(client.getOutputStream(), true);                   
           BufferedReader inFromServer = new BufferedReader(new InputStreamReader(client.getInputStream()));
           
+          
+          //teste conexão
+          
+          String aux= inFromServer.readLine();
+          
+          
+          while(!aux.startsWith("Connected")){
+              System.out.println(aux);
+              aux= inFromServer.readLine();
+          }
+          System.out.println(aux);
+          
+          
+          //conexão estabelecida
+          
+          
+          //DIFFIE HELLMAN
+          
+          ObjectOutputStream outToServerObj = new ObjectOutputStream(client.getOutputStream());
+          ObjectInputStream inFromServerObj = new ObjectInputStream(client.getInputStream());
+          outToServerObj.flush();
+          outToServerObj.reset();
+          //cliente escolhe numero random
+          KeyPairGenerator clienteKeyGen = KeyPairGenerator.getInstance("DH");
+          clienteKeyGen.initialize(dhspec,new SecureRandom());  
+          //computacao
+          KeyAgreement clienteKeyAgree = KeyAgreement.getInstance("DH");
+          KeyPair clientePair = clienteKeyGen.genKeyPair();
+          //
+          clienteKeyAgree.init(clientePair.getPrivate());
+          
+//          ByteArrayOutputStream bos = new ByteArrayOutputStream();
+//          ObjectOutputStream oos = new ObjectOutputStream(bos);
+//          oos.writeObject(o);
+//            byte [] data = bos.toByteArray();
+          System.out.println("prontos");
+          outToServerObj.writeObject(clientePair.getPublic());
+          System.out.println("enviei");
+          PublicKey serverpk = (PublicKey) inFromServerObj.readObject();
+          System.out.println("recebi");
+          Key clienteKey = clienteKeyAgree.doPhase(serverpk, true);
+          
+          
+          
+          
+         outToServerObj.flush();
+         //outToServerObj.close();
+          MessageDigest hash = MessageDigest.getInstance("SHA1");
+          
+          ByteArrayOutputStream outputStream = new ByteArrayOutputStream( );
+          byte[] baux = clienteKeyAgree.generateSecret();
+          outputStream.write( baux );
+          outputStream.write( '1' );
+          byte[] k1 = outputStream.toByteArray();
+
+          outputStream.reset();
+          outputStream.write( baux ); 
+          outputStream.write( '2' );
+          byte[] k2 = outputStream.toByteArray();
+
+          byte[] k1h = hash.digest(k1);
+          byte[] k2h = hash.digest(k2);
+          System.out.println("chavegeradak1 : "+Arrays.toString(k1h));
+          System.out.println("chavegeradak2 : "+Arrays.toString(k2h));
+          
+          
+          //criar mac
+          SecretKeySpec signingKey = new SecretKeySpec(k2h, "HmacSHA1");
+          Mac mac = Mac.getInstance("HmacSHA1");
+          mac.init(signingKey);
+//          byte[] mymac = mac.doFinal(k2h);
+//          String macAsString = new sun.misc.BASE64Encoder().encode(mymac);
+//          System.out.println("\n\n"+Arrays.toString(mymac));
+          
+          //          Construcao cifra
           
           //////     
           //            RC4
@@ -60,7 +154,7 @@ public class Client {
           //
           //            AES
           //
-          SecretKeySpec keyspec = new SecretKeySpec("0123456789abcdef".getBytes("UTF-8"), "AES");
+          SecretKeySpec keyspec = new SecretKeySpec( Arrays.copyOfRange(k1h, 0, 16), "AES");
           SecureRandom random = new SecureRandom();
           
           //Enviar IV para servidor
@@ -68,35 +162,55 @@ public class Client {
           random.nextBytes(ivEnviado);
           //System.out.println(ivEnviado);
           IvParameterSpec ivspec = new IvParameterSpec(ivEnviado);
+                   
+
           client.getOutputStream().write(ivspec.getIV());
           
 
-          Cipher myCipher = Cipher.getInstance("AES/CBC/NoPadding");
+          Cipher myCipher = Cipher.getInstance("AES/CFB8/NoPadding");
           myCipher.init(Cipher.ENCRYPT_MODE, keyspec, ivspec);
-          //teste conexão
-          
-          String aux= inFromServer.readLine();
           
           
-          while(!aux.startsWith("Connected")){
-              System.out.println(aux);
-              aux= inFromServer.readLine();
-          }
-          System.out.println(aux);
           
           
-          //conexão estabelecidade
           
           
           CipherOutputStream cos = new CipherOutputStream(client.getOutputStream(), myCipher);
           
           int test;
-        while((test=System.in.read())!=-1) {
-            //System.out.println("enviei");
-            cos.write((byte)test);
-            cos.flush();
-           
-        }
+          byte[] r = new byte[1024];
+          Scanner sc = new Scanner(System.in);
+          String string;
+          while(true){
+              
+              string=sc.nextLine()+"\n";
+              outputStream.reset();
+              outputStream.write(string.getBytes());
+              cos.write(string.getBytes());
+              
+              byte[] mymac = mac.doFinal(string.getBytes());
+              outputStream.write(mymac);
+              //cos.write(outputStream.toByteArray());
+              cos.write(mymac);
+             
+              //cos.write(mymac);
+              System.out.println(Arrays.toString(mymac));
+              cos.flush();
+          }
+//        while((System.in.read(r))!=-1) {
+//            System.out.println("tamanho :"+r.length);
+//            System.out.println( "bgin : " + new String(r, "UTF-8"));
+////            for(int i=0;i<r.length;i++){
+////                if(r[i]=='\n')
+////                    r[i]='\0';
+////            }
+//            cos.write(r);
+//            //System.out.println( "end : "+new String(r, "UTF-8"));
+//            //cos.write(mymac);
+//            cos.flush();
+//            
+//           
+//        }
         
 //          while(true){
 //          String sentence = inFromUser.readLine();
@@ -116,6 +230,8 @@ public class Client {
         } catch (InvalidKeyException ex) {
             Logger.getLogger(Client.class.getName()).log(Level.SEVERE, null, ex);
         } catch (InvalidAlgorithmParameterException ex) {
+            Logger.getLogger(Client.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (ClassNotFoundException ex) {
             Logger.getLogger(Client.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
