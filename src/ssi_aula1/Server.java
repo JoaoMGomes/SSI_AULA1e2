@@ -11,12 +11,15 @@ import java.net.*;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.Key;
+import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.SecureRandom;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 import java.util.NoSuchElementException;
 import java.util.Scanner;
@@ -71,9 +74,9 @@ public class Server{
                    
                     //DIFFIE HELLMAN
                     
-                    ObjectOutputStream outToClientObj = new ObjectOutputStream(clientSocket.getOutputStream());
-                    ObjectInputStream inFromClientObj = new ObjectInputStream(clientSocket.getInputStream());
-                    outToClientObj.flush();
+                   // ObjectOutputStream outToClientObj = new ObjectOutputStream(clientSocket.getOutputStream());
+                    //ObjectInputStream inFromClientObj = new ObjectInputStream(clientSocket.getInputStream());
+                    //outToClientObj.flush();
 
                     //cliente escolhe numero random
                     KeyPairGenerator serverKeyGen = KeyPairGenerator.getInstance("DH");
@@ -81,17 +84,34 @@ public class Server{
                     //computacao
                     KeyAgreement serverKeyAgree = KeyAgreement.getInstance("DH");
                     KeyPair serverPair = serverKeyGen.genKeyPair();
-                    //
                     serverKeyAgree.init(serverPair.getPrivate());
-                    System.out.println("prontos");
-                    outToClientObj.writeObject(serverPair.getPublic());
-                    System.out.println("enviei");
+                    //
+                    byte[] keyBytes = new byte[425];
                     
-                    PublicKey clientpk = (PublicKey) inFromClientObj.readObject();
-                    System.out.println("recebi");
-                    Key clienteKey = serverKeyAgree.doPhase(clientpk, true);
-                    outToClientObj.flush();
-                    outToClientObj.reset();
+                    
+                    clientSocket.getOutputStream().write(serverPair.getPublic().getEncoded());
+                    clientSocket.getOutputStream().flush();
+                    System.out.println("tamanho"+serverPair.getPublic().getEncoded().length);
+                    //receber cenix
+                    clientSocket.getInputStream().read(keyBytes);
+                    //transformar cenix
+                    System.out.println(Arrays.toString(serverPair.getPublic().getEncoded()));
+                    System.out.println(Arrays.toString(keyBytes));
+                    PublicKey serverpk = KeyFactory.getInstance("DH").generatePublic(new X509EncodedKeySpec(keyBytes));
+                    
+                    Key svKey = serverKeyAgree.doPhase(serverpk, true);
+                    
+                    
+//                    serverKeyAgree.init(serverPair.getPrivate());
+//                    System.out.println("prontos");
+//                    outToClientObj.writeObject(serverPair.getPublic());
+//                    System.out.println("enviei");
+//                    
+//                    PublicKey clientpk = (PublicKey) inFromClientObj.readObject();
+//                    System.out.println("recebi");
+//                    Key clienteKey = serverKeyAgree.doPhase(clientpk, true);
+//                    outToClientObj.flush();
+//                    outToClientObj.reset();
                     
                     //outToClientObj.close();
                     //inFromClientObj.close();
@@ -154,21 +174,30 @@ public class Server{
                     cis = new CipherInputStream(clientSocket.getInputStream(), myCipher);
                     
                     
-                    int test;
+                    int nSeq=1;
                     int aux=0;
-                    byte[] r = new byte[20];
+                    byte[] r = new byte[25];
                     Scanner sc = new Scanner(cis);
+                    InputStreamReader inYolo = new InputStreamReader(clientSocket.getInputStream());
+                    InputStream daqui = clientSocket.getInputStream();
                     while(true){
                         
                         String string =sc.nextLine()+"\n";
-                       
-                        cis.read(r);
-                        byte[] clientmac = mac.doFinal(string.getBytes());
+                       //System.out.print("mensagem="+string+"#");
+                        //cis.read(r);
+                        //r = new byte[25];
+                        //cis.read(r,0,20);
+                        String clientMacS = sc.nextLine();
+                        System.out.println(clientMacS);
                         
-                        if(Arrays.equals(clientmac, r))
+                        byte[] clientmac = mac.doFinal((string+nSeq).getBytes());
+                        
+                        if(clientMacS.equals(Arrays.toString(clientmac))){
                             System.out.print(this.mynumber+ " : "+string);
+                            nSeq++;
+                        }
                         else
-                            System.out.print(this.mynumber+ " ->chegou mensagem que foi ignorada");
+                            System.out.println(this.mynumber+ " ->chegou mensagem que foi ignorada");
                         
                         //System.out.println("byte1 : "+Arrays.toString(clientmac));
                         //System.out.println("byte : "+Arrays.toString(r));
@@ -202,6 +231,8 @@ public class Server{
                     Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);  
                 }catch (NoSuchElementException ex) {
                     System.out.println("[ "+this.mynumber+" ]");
+                    decrementClients();
+                    synchronized(qql){ qql.notify(); }
                 }  catch (NoSuchAlgorithmException ex) {
                     Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
                 } catch (NoSuchPaddingException ex) {
@@ -210,7 +241,7 @@ public class Server{
                     Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
                 } catch (InvalidAlgorithmParameterException ex) {
                     Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
-                } catch (ClassNotFoundException ex) {
+                } catch (InvalidKeySpecException ex) {
                     Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
@@ -261,7 +292,8 @@ public class Server{
                     
                     Thread t = new Reader(orderNumber,clientSocket);
                     t.start();
-                    
+                    //espera antes de novo cliente
+                    Thread.sleep(5000);
                     orderNumber++;
                     
 //                    while ((inputLine = in.readLine()) != null) 
