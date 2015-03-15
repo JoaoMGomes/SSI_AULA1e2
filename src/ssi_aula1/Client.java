@@ -27,6 +27,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
+import javax.crypto.CipherInputStream;
 import javax.crypto.CipherOutputStream;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.KeyAgreement;
@@ -63,8 +64,8 @@ public class Client {
             System.out.println(aux);
 //conexão estabelecida
 //DIFFIE HELLMAN
-           // ObjectOutputStream outToServerObj = new ObjectOutputStream(client.getOutputStream());
-            //ObjectInputStream inFromServerObj = new ObjectInputStream(client.getInputStream());
+  //          ObjectOutputStream outToServerObj = new ObjectOutputStream(client.getOutputStream());
+//            ObjectInputStream inFromServerObj = new ObjectInputStream(client.getInputStream());
             //outToServerObj.flush();
             //outToServerObj.reset();
 //cliente escolhe numero random
@@ -75,10 +76,7 @@ public class Client {
             KeyPair clientePair = clienteKeyGen.genKeyPair();
 //
             clienteKeyAgree.init(clientePair.getPrivate());
-// ByteArrayOutputStream bos = new ByteArrayOutputStream();
-// ObjectOutputStream oos = new ObjectOutputStream(bos);
-// oos.writeObject(o);
-// byte [] data = bos.toByteArray();
+
 //            System.out.println("prontos");
 //            outToServerObj.writeObject(clientePair.getPublic());
 //            System.out.println("enviei");
@@ -93,10 +91,10 @@ public class Client {
           byte[] keyBytes = new byte[425];
           client.getOutputStream().write(clientePair.getPublic().getEncoded());
           client.getOutputStream().flush();
-          System.out.println("tamanho"+clientePair.getPublic().getEncoded().length);
-          System.out.println(Arrays.toString(clientePair.getPublic().getEncoded()));
+          //System.out.println("tamanho"+clientePair.getPublic().getEncoded().length);
+         // System.out.println(Arrays.toString(clientePair.getPublic().getEncoded()));
           //receber cenix
-          client.getInputStream().read(keyBytes);
+          client.getInputStream().read(keyBytes,0,425);
           //transformar cenix
           PublicKey serverpk = KeyFactory.getInstance("DH").generatePublic(new X509EncodedKeySpec(keyBytes));
           Key clienteKey = clienteKeyAgree.doPhase(serverpk, true);
@@ -151,8 +149,15 @@ public class Client {
             IvParameterSpec ivspec = new IvParameterSpec(ivEnviado);
             client.getOutputStream().write(ivspec.getIV());
             Cipher myCipher = Cipher.getInstance("AES/CFB8/NoPadding");
+           // Cipher myCipherDec = Cipher.getInstance("AES/CFB8/NoPadding");
             myCipher.init(Cipher.ENCRYPT_MODE, keyspec, ivspec);
+           // myCipherDec.init(Cipher.DECRYPT_MODE, keyspec, ivspec);
+            
             CipherOutputStream cos = new CipherOutputStream(client.getOutputStream(), myCipher);
+           // CipherInputStream cis = new CipherInputStream(client.getInputStream(), myCipherDec);
+            
+          //  Scanner snin = new Scanner(cis);
+            //System.out.println(snin.nextLine());
             
             int nSeq=1;
             byte[] r = new byte[1024];

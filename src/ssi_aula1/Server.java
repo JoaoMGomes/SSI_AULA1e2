@@ -62,6 +62,7 @@ public class Server{
             this.clientSocket=clientSocket;
         }
         
+        @SuppressWarnings("empty-statement")
         public void run(){
             {
                 String inputLine="";
@@ -91,13 +92,17 @@ public class Server{
                     
                     clientSocket.getOutputStream().write(serverPair.getPublic().getEncoded());
                     clientSocket.getOutputStream().flush();
-                    System.out.println("tamanho"+serverPair.getPublic().getEncoded().length);
+                   // System.out.println("tamanho"+serverPair.getPublic().getEncoded().length);
                     //receber cenix
-                    clientSocket.getInputStream().read(keyBytes);
+                    System.out.println("li "+clientSocket.getInputStream().read(keyBytes,0,425));
                     //transformar cenix
-                    System.out.println(Arrays.toString(serverPair.getPublic().getEncoded()));
+                    //System.out.println(Arrays.toString(serverPair.getPublic().getEncoded()));
+                    //System.out.println(Arrays.toString(keyBytes));          
                     System.out.println(Arrays.toString(keyBytes));
-                    PublicKey serverpk = KeyFactory.getInstance("DH").generatePublic(new X509EncodedKeySpec(keyBytes));
+                    //keyBytes = new byte[]{48, -126, 1, -90, 48, -126, 1, 26, 6, 9, 42, -122, 72, -122, -9, 13, 1, 3, 1, 48, -126, 1, 11, 2, -127, -127, 0, -115, -81, 46, 16, -31, -113, -35, 125, -3, -88, 124, -52, 44, -119, 9, 65, -23, -120, 17, 78, 108, 36, -84, 42, -127, -68, -36, -32, -127, -7, 5, 14, 109, -54, 114, -80, -61, -118, 114, 107, -5, 102, 11, 87, -21, -78, 17, -18, -35, -5, -111, 43, -119, 39, 35, -103, -115, 45, -119, -128, -81, -96, 18, 89, -124, -8, -124, -123, 7, 42, -63, 111, -34, 82, -30, -114, 24, 34, -13, -67, 95, 39, -69, -39, 76, 89, 119, 15, -59, -21, 93, 36, 21, 65, -98, -82, -111, 14, -66, 48, 10, 64, 30, 111, 42, -45, 82, -40, 120, -16, 100, -114, 5, 120, -66, -122, 90, -98, 63, 45, -10, 75, 18, 101, -8, -89, -14, 63, 2, -127, -128, 62, -31, -39, -15, 57, 44, 70, 125, 37, -127, 80, -30, 49, -49, 104, 118, -115, 58, -77, 78, 15, 96, 14, -49, 57, 21, -115, -127, 91, 67, 110, -55, 108, 119, -98, -57, -9, -87, -90, 22, 72, -107, -23, -37, 102, 120, 36, 37, 40, 43, -88, -73, 44, -53, -109, -4, -69, 43, -66, 32, -121, -15, -59, 44, -108, 93, 105, 11, 46, -74, 52, 49, 62, -40, -105, -2, -7, 122, 19, -32, 28, -120, 43, -86, -57, -68, 2, 58, 108, 11, -56, -30, -128, -126, 94, -48, 14, 78, 123, 16, -94, 1, 96, -21, 78, -47, 54, -100, 118, 96, -79, -104, 52, 99, 27, -118, 20, -121, -71, -70, 109, -2, 119, -85, 2, 74, -46, -5, 2, 2, 4, 0, 3, -127, -123, 0, 2, -127, -127, 0, -120, 94, -23, 45, -74, 15, -38, 119, 40, 111, -83, 113, 58, -89, -48, -27, 105, -67, -64, 72, -54, 40, -1, 5, -38, -115, 15, 104, 35, 88, -50, -106, -10, 50, 125, -110, -81, -75, -115, 82, -2, 69, -46, 15, 124, 110, 53, -89, 108, -29, 123, -22, 11, 121, 28, -49, 43, 18, 59, -120, 95, 36, 124, -6, -40, -61, -118, -105, 98, 81, -85, 38, -52, -52, -111, -109, -32, 5, 0, 87, 2, -93, 109, 4, 31, 7, -91, -90, -127, -97, 9, -78, -10, 16, -73, 75, 0, 13, 118, 25, -118, -24, -70, -19, -11, 16, -80, 21, 35, -51, -113, -120, -58, -75, -105, -65, -18, -73, 82, 102, -50, -58, -60, 16, 116, 98, -121};
+                    ByteArrayOutputStream ops = new ByteArrayOutputStream( );
+                    ops.write(keyBytes);
+                    PublicKey serverpk = KeyFactory.getInstance("DH").generatePublic(new X509EncodedKeySpec(ops.toByteArray()));
                     
                     Key svKey = serverKeyAgree.doPhase(serverpk, true);
                     
@@ -158,28 +163,29 @@ public class Server{
                     
                     ///Receber IV do cliente
                     byte ivRecebido[] = new byte[16];
-                    System.out.println(clientSocket.getInputStream().read(ivRecebido));
-                    System.out.println(ivRecebido);
+                    clientSocket.getInputStream().read(ivRecebido);
+                   // System.out.println(ivRecebido);
                     
                     IvParameterSpec ivspec = new IvParameterSpec(ivRecebido);
 
                     Cipher myCipher = Cipher.getInstance("AES/CFB8/NoPadding");
                     myCipher.init(Cipher.DECRYPT_MODE, keyspec, ivspec);
-                    System.out.println("block size is "+myCipher.getBlockSize());
-                    
+                   // System.out.println("block size is "+myCipher.getBlockSize());
+                    //Cipher myCipherEnc = Cipher.getInstance("AES/CFB8/NoPadding");
+                    //myCipherEnc.init(Cipher.ENCRYPT_MODE, keyspec, ivspec);
                     
                     
                     
                     
                     cis = new CipherInputStream(clientSocket.getInputStream(), myCipher);
+                    //CipherOutputStream cos = new CipherOutputStream(clientSocket.getOutputStream(), myCipherEnc);
                     
-                    
+                    //cos.write("oramuitoboatardemeusamigos\n".getBytes());
                     int nSeq=1;
                     int aux=0;
                     byte[] r = new byte[25];
                     Scanner sc = new Scanner(cis);
-                    InputStreamReader inYolo = new InputStreamReader(clientSocket.getInputStream());
-                    InputStream daqui = clientSocket.getInputStream();
+                    
                     while(true){
                         
                         String string =sc.nextLine()+"\n";
@@ -188,7 +194,7 @@ public class Server{
                         //r = new byte[25];
                         //cis.read(r,0,20);
                         String clientMacS = sc.nextLine();
-                        System.out.println(clientMacS);
+                        //System.out.println(clientMacS);
                         
                         byte[] clientmac = mac.doFinal((string+nSeq).getBytes());
                         
