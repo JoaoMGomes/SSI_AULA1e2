@@ -70,14 +70,7 @@ public class ValidateCertPath {
         return cp;
     }
 
-    /**
-     * Get a DER or BASE64-encoded X.509 certificate from a file.
-     *
-     * @param certFilePath path to file containing DER or BASE64-encoded
-     * certificate
-     * @return X509Certificate
-     * @throws Exception on error
-     */
+   
     public static X509Certificate getCertFromFile(String certFilePath)
             throws Exception {
         X509Certificate cert = null;
